@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeSafer Reputation Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #001a33 0%, #003366 100%); color: #ffffff; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 32px; margin-bottom: 10px; color: #99CC00; }
+        .subtitle { color: #cccccc; margin-bottom: 8px; font-size: 14px; }
+        .data-date { color: #99CC00; font-size: 12px; margin-bottom: 25px; font-style: italic; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { background: rgba(51, 102, 153, 0.3); color: #ffffff; border: 1px solid rgba(153, 204, 0, 0.3); padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: all 0.3s; font-size: 13px; }
+        .tab.active { background: #99CC00; color: #003366; border-color: #99CC00; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .card { background: rgba(51, 102, 153, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(153, 204, 0, 0.2); }
+        .card-title { font-size: 14px; color: #99CC00; text-transform: uppercase; margin-bottom: 12px; font-weight: 600; }
+        .metric-large { font-size: 42px; font-weight: bold; color: #ffffff; margin-bottom: 6px; }
+        .metric-medium { font-size: 28px; font-weight: bold; color: #ffffff; }
+        .metric-sub { font-size: 13px; color: #cccccc; margin-top: 4px; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 10px; }
+        .status-red { background: #ff6b6b; color: white; }
+        .status-yellow { background: #ffc107; color: #003366; }
+        .status-green { background: #99CC00; color: #003366; }
+        .chart-container { position: relative; height: 280px; margin-top: 15px; }
+        .insight-box { background: rgba(0, 51, 102, 0.4); border-left: 4px solid #99CC00; padding: 15px; margin-top: 15px; border-radius: 6px; font-size: 14px; line-height: 1.6; }
+        .highlight-box { background: rgba(153, 204, 0, 0.2); border: 2px solid #99CC00; padding: 20px; border-radius: 12px; margin: 20px 0; }
+        .highlight-box h3 { color: #99CC00; margin-bottom: 10px; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(153, 204, 0, 0.2); }
+        th { color: #99CC00; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+        td { font-size: 14px; }
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px; margin: 20px 0; }
+        .stat-item { text-align: center; }
+        .stat-label { color: #99CC00; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-value { font-size: 28px; font-weight: bold; color: #ffffff; }
+        .decision-log { background: rgba(51, 102, 153, 0.2); padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid #99CC00; }
+        .decision-log-date { color: #99CC00; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+        .decision-log-text { font-size: 13px; color: #ffffff; line-height: 1.5; }
+        .positive { color: #99CC00; }
+        .negative { color: #ff6b6b; }
+        .neutral { color: #ffc107; }
+        .gate-status { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .gate-complete { background: #99CC00; color: #003366; }
+        .gate-progress { background: #ffc107; color: #003366; }
+        .gate-pending { background: rgba(255, 255, 255, 0.2); color: #ffffff; }
+        .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .theme-box { padding: 15px; border-radius: 8px; border-left: 4px solid; }
+        .theme-box-positive { background: rgba(153, 204, 0, 0.1); border-color: #99CC00; }
+        .theme-box-negative { background: rgba(255, 107, 107, 0.1); border-color: #ff6b6b; }
+        .theme-box-label { font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+        .theme-box ul { list-style: none; padding: 0; }
+        .theme-box ul li { font-size: 13px; padding: 4px 0; line-height: 1.4; }
+        .theme-box ul li::before { content: "\2192 "; color: inherit; }
+        .section-header { font-size: 18px; color: #99CC00; margin-bottom: 15px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid rgba(153, 204, 0, 0.3); }
+        .exec-card { background: rgba(51, 102, 153, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(153, 204, 0, 0.2); margin-bottom: 15px; }
+        .exec-card-title { font-size: 16px; font-weight: bold; color: #ffffff; margin-bottom: 8px; }
+        .exec-card-context { font-size: 13px; color: #cccccc; margin-bottom: 12px; line-height: 1.5; }
+        .exec-card ul { list-style: none; padding: 0; }
+        .exec-card ul li { font-size: 13px; padding: 4px 0; line-height: 1.4; color: #ffffff; }
+        .exec-card ul li::before { content: "\2192 "; color: #99CC00; }
+        .metrics-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 25px; }
+        .metrics-bar-item { background: rgba(51, 102, 153, 0.3); border-radius: 8px; padding: 15px; text-align: center; border: 1px solid rgba(153, 204, 0, 0.15); }
+        .metrics-bar-label { font-size: 11px; color: #99CC00; text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
+        .metrics-bar-value { font-size: 24px; font-weight: bold; }
+        .metrics-bar-note { font-size: 10px; color: #cccccc; margin-top: 4px; }
+        @media (max-width: 768px) { .side-by-side { grid-template-columns: 1fr; } .metrics-bar { grid-template-columns: repeat(3, 1fr); } .three-col { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LifeSafer Reputation Dashboard</h1>
+        <p class="subtitle">What customers are saying across 6 platforms and what it means for us</p>
+        <p class="data-date">Data as of April 27, 2026 | Next refresh: May 31, 2026</p>
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('crisis')">Executive Summary</div>
+            <div class="tab" onclick="showTab('multiplatform')">All 6 Platforms</div>
+            <div class="tab" onclick="showTab('path')">Path to 4.7</div>
+            <div class="tab" onclick="showTab('nps')">NPS & Champions</div>
+            <div class="tab" onclick="showTab('social')">Reddit, FB & AI</div>
+            <div class="tab" onclick="showTab('competitive')">Us vs Them</div>
+            <div class="tab" onclick="showTab('trial')">Are We on Track?</div>
+        </div>
+
+        <div id="crisis" class="tab-content active">
+            <div class="metrics-bar">
+                <div class="metrics-bar-item"><div class="metrics-bar-label">TrustPilot</div><div class="metrics-bar-value positive">4.6</div><div class="metrics-bar-note">Held 43 days</div></div>
+                <div class="metrics-bar-item"><div class="metrics-bar-label">Google Reviews</div><div class="metrics-bar-value positive">4.8</div><div class="metrics-bar-note">Across locations</div></div>
+                <div class="metrics-bar-item"><div class="metrics-bar-label">NPS</div><div class="metrics-bar-value negative">-14</div><div class="metrics-bar-note">First baseline</div></div>
+                <div class="metrics-bar-item"><div class="metrics-bar-label">AI Sentiment</div><div class="metrics-bar-value positive">66%</div><div class="metrics-bar-note">Positive (Profound)</div></div>
+                <div class="metrics-bar-item"><div class="metrics-bar-label">Social</div><div class="metrics-bar-value positive">&#10003;</div><div class="metrics-bar-note">Favorable</div></div>
+            </div>
+            <div class="section-header">What to Watch</div>
+            <div class="side-by-side" style="margin-top: 0;">
+                <div class="exec-card"><div class="exec-card-title">Device Experience Is Showing Up Across Multiple Data Sources</div><div class="exec-card-context">NPS detractors and low star TrustPilot reviews are surfacing the same themes. Worth exploring with ops and product to see what's addressable, because improvements here would move both scores.</div><ul><li>False positives and overly sensitive readings</li><li>Unclear requirements leading to unexpected violations</li><li>Device frustrating to use day to day</li><li>Same feedback showing in NPS, TrustPilot, and AI sentiment</li></ul></div>
+                <div class="exec-card"><div class="exec-card-title">BBB Is an Industry Wide Problem That Still Needs a Plan</div><div class="exec-card-context">All three providers are below 1.1 stars, so this isn't unique to us. But BBB carries weight with state agencies and legal professionals, which means it needs a different approach than TrustPilot. Still scoping what that looks like.</div><ul><li>Us: 1.04 stars (239 reviews, Not Accredited)</li><li>Smart Start: 1.03 stars (159 reviews, Accredited)</li><li>Intoxalock: 1.01 stars (270 reviews, 943 complaints)</li><li>Different audience, different strategy needed</li></ul></div>
+            </div>
+            <div class="section-header" style="margin-top: 25px;">What's Working</div>
+            <div class="three-col">
+                <div class="exec-card"><div class="exec-card-title">Service Is Our Competitive Edge and the Data Proves It</div><div class="exec-card-context">Across every source we track, customer service and support is the area where we clearly separate from the competition.</div><ul><li>Copilot ranks us #1 for friendly service (4/5 on support, Intoxalock gets 2/5)</li><li>Profound AI top positive themes: transparent, affordable, competitive pricing</li><li>NPS promoters: smooth installation, helpful support, convenient scheduling</li><li>TrustPilot #1 driver of 5 star reviews: customer service</li><li>Reddit and Facebook: unprompted recommendations and documented switches to us</li></ul></div>
+                <div class="exec-card"><div class="exec-card-title">Intoxalock's State Agency Issues Are Keeping the Door Open</div><div class="exec-card-context">Illinois and Florida Secretaries of State are still not fully doing business with Intoxalock following the cyberattack. This is well known in the industry. What matters for us is how we're positioned.</div><ul><li>We're on approved vendor lists in these states</li><li>Our service reputation gives partners a reason to refer us</li><li>Drivers who need to switch are already finding us on their own</li><li>Opportunity across the business to lead with our customer experience story in these markets</li></ul></div>
+                <div class="exec-card"><div class="exec-card-title">NPS to TrustPilot Pipeline Is Live and Performing</div><div class="exec-card-context">46 promoters from our first NPS survey are being routed into TrustPilot review invitations. The pipeline is running strong.</div><ul><li>This is the engine that moves us from 4.6 toward 4.7</li><li>Promoters are being invited at the right moment in their journey</li><li>Survey email performance: 37.7% open rate, 8.5% click rate</li></ul></div>
+            </div>
+        </div>
+
+        <div id="multiplatform" class="tab-content">
+            <h2 style="font-size: 24px; margin-bottom: 20px; color: #99CC00;">Where We Stand Across All 6 Platforms</h2>
+            <div class="dashboard-grid">
+                <div class="card"><div class="card-title">TrustPilot</div><div class="metric-medium">4.6 <span class="status-badge status-green">STABLE</span></div><div class="metric-sub">Average: 4.58, trending up | Held 43 consecutive days</div></div>
+                <div class="card"><div class="card-title">Google Reviews</div><div class="metric-medium">4.8 <span class="status-badge status-green">STRONG</span></div><div class="metric-sub">Across locations | 91% of reviews are 4 or 5 stars</div></div>
+                <div class="card"><div class="card-title">NPS</div><div class="metric-medium negative">-14 <span class="status-badge status-yellow">FIRST BASELINE</span></div><div class="metric-sub">129 responses | See NPS tab for full breakdown</div></div>
+                <div class="card"><div class="card-title">BBB</div><div class="metric-medium negative">1.04 <span class="status-badge status-red">INDUSTRY PROBLEM</span></div><div class="metric-sub">239 reviews | Not Accredited | All 3 providers below 1.1</div></div>
+                <div class="card"><div class="card-title">Reddit & Facebook</div><div class="metric-medium positive">Favorable <span class="status-badge status-green">WINNING</span></div><div class="metric-sub">194 mentions this month | Organic recommendations growing</div></div>
+                <div class="card"><div class="card-title">AI Search (Profound)</div><div class="metric-medium positive">66% <span class="status-badge status-green">POSITIVE</span></div><div class="metric-sub">Top themes: transparent pricing, affordable, competitive</div></div>
+            </div>
+            <div class="card"><div class="card-title">Head to Head</div><table><thead><tr><th>Platform</th><th>Us</th><th>Smart Start</th><th>Intoxalock</th><th>Where We Stand</th></tr></thead><tbody><tr><td>TrustPilot</td><td>4.6</td><td>4.7</td><td>4.4</td><td class="neutral">0.1 behind Smart Start</td></tr><tr><td>Google Reviews</td><td class="positive">4.8</td><td>TBD</td><td>TBD</td><td class="positive">Leading where we have data</td></tr><tr><td>BBB</td><td>1.04</td><td>1.03</td><td>1.01</td><td class="neutral">Everyone is low</td></tr><tr><td>Reddit Sentiment</td><td class="positive">Positive</td><td>Neutral</td><td class="negative">Negative</td><td class="positive">We're the organic pick</td></tr><tr><td>AI Sentiment</td><td class="positive">66% Positive</td><td>TBD</td><td>TBD</td><td class="positive">Pricing story is landing</td></tr></tbody></table></div>
+        </div>
+
+        <div id="path" class="tab-content">
+            <div class="highlight-box"><h3>The Goal: Hold 4.6, Push to 4.7</h3><div class="stat-row"><div class="stat-item"><div class="stat-label">Current Average</div><div class="stat-value">4.58</div></div><div class="stat-item"><div class="stat-label">Target</div><div class="stat-value">4.7</div></div><div class="stat-item"><div class="stat-label">Days at 4.6</div><div class="stat-value positive">43</div></div><div class="stat-item"><div class="stat-label">5 Star Rate</div><div class="stat-value">82%</div></div></div><p style="margin-top: 12px; font-size: 14px; color: #cccccc;">Our 4.6 has held for 43 consecutive days across 19,000+ reviews and the 4.58 average keeps nudging upward. The rating is holding because the underlying experience is consistently earning it.</p></div>
+            <div class="dashboard-grid">
+                <div class="card"><div class="card-title">Last 28 Days</div><div class="metric-large">245</div><div class="metric-sub">Reviews collected</div><div class="metric-sub">Down 13% from prior period, but 90 day trend is up 22%</div></div>
+                <div class="card"><div class="card-title">Last 90 Days</div><div class="metric-large positive">842</div><div class="metric-sub">Reviews collected</div><div class="metric-sub">Up 22% from the prior 90 day window</div></div>
+                <div class="card"><div class="card-title">Positive Tier</div><div class="metric-large">89%</div><div class="metric-sub">4 and 5 star combined</div><div class="metric-sub">82% five star + 7% four star</div></div>
+            </div>
+            <div class="card"><div class="card-title">Monthly Volume</div><table><thead><tr><th>Month</th><th>Reviews</th><th>Note</th></tr></thead><tbody><tr><td>February</td><td>255</td><td>Baseline</td></tr><tr><td>March</td><td>315</td><td class="positive">Strongest month (likely boost from Intoxalock outage)</td></tr><tr><td>April (through 4/27)</td><td>219</td><td class="neutral">On pace to land near February levels</td></tr></tbody></table></div>
+            <div class="card"><div class="card-title">What's Driving Reviews</div><div class="side-by-side"><div class="theme-box theme-box-positive"><div class="theme-box-label" style="color: #99CC00;">WHAT DRIVES 5 STAR REVIEWS</div><ul><li>Customer service and staff interactions</li><li>Service quality and professionalism</li><li>Smooth, easy experience overall</li></ul></div><div class="theme-box theme-box-negative"><div class="theme-box-label" style="color: #ff6b6b;">WHAT DRIVES LOW STAR REVIEWS</div><ul><li>Inconsistent service interactions</li><li>Device related issues</li><li>Installation experience</li></ul></div></div></div>
+            <div class="card"><div class="card-title">Spotlight: Spanish Language Reviews</div><div class="stat-row"><div class="stat-item"><div class="stat-label">5 Star Rate</div><div class="stat-value positive">93%</div></div><div class="stat-item"><div class="stat-label">Average Rating</div><div class="stat-value positive">4.79</div></div><div class="stat-item"><div class="stat-label">Trend</div><div class="stat-value positive">Up</div></div></div><div class="insight-box">Something is working really well for this audience. Worth understanding what's driving it (specific service centers, staff, processes) so we can apply those learnings more broadly.</div></div>
+            <div class="card"><div class="card-title">12 Week TrustPilot Trend</div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+        </div>
+
+        <div id="nps" class="tab-content">
+            <div class="highlight-box"><h3>NPS: First Look</h3><div class="stat-row"><div class="stat-item"><div class="stat-label">NPS Score</div><div class="stat-value negative">-14</div></div><div class="stat-item"><div class="stat-label">Total Responses</div><div class="stat-value">129</div></div><div class="stat-item"><div class="stat-label">Detractors</div><div class="stat-value negative">64</div></div><div class="stat-item"><div class="stat-label">Promoters</div><div class="stat-value positive">46</div></div><div class="stat-item"><div class="stat-label">Passives</div><div class="stat-value">19</div></div></div><p style="margin-top: 12px; font-size: 14px; color: #cccccc;">This is our first real read on how customers feel about us beyond review platforms. The scores land heavy at both ends: 36 people gave us a perfect 10 and 30 gave us a 0, with not much in between. That tells us the experience isn't consistently bad. It's inconsistent. When we deliver, we really deliver. When we don't, there's a clear gap. That's actually useful to know because inconsistency is easier to fix than a fundamentally broken experience.</p></div>
+            <div class="card"><div class="card-title">Score Distribution</div><div class="chart-container" style="height: 220px;"><canvas id="npsChart"></canvas></div></div>
+            <div class="card"><div class="card-title">What Customers Are Telling Us</div><div class="side-by-side"><div class="theme-box theme-box-negative"><div class="theme-box-label" style="color: #ff6b6b;">WHAT'S DRAGGING THE SCORE DOWN</div><ul><li>Device feels too sensitive (false positives, readings they don't trust)</li><li>Requirements aren't clear enough (violations they didn't expect)</li><li>Device is frustrating to use day to day</li></ul></div><div class="theme-box theme-box-positive"><div class="theme-box-label" style="color: #99CC00;">WHAT'S WORKING</div><ul><li>Installation was smooth</li><li>Support was helpful when they needed it</li><li>Scheduling and service was convenient</li></ul></div></div><div class="insight-box">The negative themes are about the device and the process. The positive themes are about our people and our service. That tracks with what AI tools are already telling prospective customers: we're the best option for friendly, helpful service. The opportunity is to keep owning that lane while working with ops on the device experience side.</div></div>
+            <div class="dashboard-grid">
+                <div class="card"><div class="card-title">Champion Pipeline</div><div class="metric-large positive">46</div><div class="metric-sub">Promoters (scored 9 or 10)</div><div style="margin-top: 10px; font-size: 13px; color: #cccccc;">These are being routed into TrustPilot review invitations. The pipeline is live and performing.</div></div>
+                <div class="card"><div class="card-title">Survey Email Performance</div><div style="margin-top: 10px;"><div style="font-size: 13px; margin-bottom: 8px;"><span class="positive" style="font-size: 20px; font-weight: bold;">2,500</span> sent</div><div style="font-size: 13px; margin-bottom: 8px;"><span style="font-size: 20px; font-weight: bold;">37.7%</span> open rate</div><div style="font-size: 13px; margin-bottom: 8px;"><span style="font-size: 20px; font-weight: bold;">8.5%</span> click rate</div></div><div class="metric-sub" style="margin-top: 8px;">The survey is reaching people and they're engaging with it. The data is reliable.</div></div>
+            </div>
+        </div>
+
+        <div id="social" class="tab-content">
+            <h2 style="font-size: 24px; margin-bottom: 20px; color: #99CC00;">Reddit, Facebook & AI Sentiment</h2>
+            <div class="card"><div class="card-title">Meltwater Sentiment (April)</div><div class="stat-row"><div class="stat-item"><div class="stat-label">Neutral</div><div class="stat-value">114</div><div class="metric-sub">58.8%</div></div><div class="stat-item"><div class="stat-label">Negative</div><div class="stat-value negative">49</div><div class="metric-sub">25.3%</div></div><div class="stat-item"><div class="stat-label">Positive</div><div class="stat-value positive">31</div><div class="metric-sub">16%</div></div><div class="stat-item"><div class="stat-label">Total Mentions</div><div class="stat-value">194</div><div class="metric-sub">Across all platforms</div></div></div><div class="insight-box">Reddit was the platform with both the most positive mentions (24) and all 49 negative mentions this month. Reddit is where our reputation gets tested and built. Right now, the conversation is going our way.</div></div>
+            <div class="card"><div class="card-title">The Social Conversation</div><div class="side-by-side"><div style="padding: 15px; background: rgba(51, 102, 153, 0.2); border-radius: 8px;"><div style="font-size: 12px; color: #99CC00; margin-bottom: 8px; font-weight: bold;">REDDIT</div><ul style="list-style: none; padding: 0; font-size: 13px; line-height: 2;"><li style="color:#fff;">&#8594; Organic endorsements in provider comparison threads</li><li style="color:#fff;">&#8594; Documented switches from Intoxalock</li><li style="color:#fff;">&#8594; Our blow pattern being highlighted as easier to use</li><li style="color:#fff;">&#8594; Customers defending us unprompted</li></ul></div><div style="padding: 15px; background: rgba(51, 102, 153, 0.2); border-radius: 8px;"><div style="font-size: 12px; color: #99CC00; margin-bottom: 8px; font-weight: bold;">FACEBOOK</div><ul style="list-style: none; padding: 0; font-size: 13px; line-height: 2;"><li style="color:#fff;">&#8594; Named switches to us in the Intoxalock Class Action group</li><li style="color:#fff;">&#8594; Intoxalock billing complaints still building</li><li style="color:#fff;">&#8594; Intoxalock CEO email now circulating publicly</li><li style="color:#fff;">&#8594; No negative conversation about us</li></ul></div></div></div>
+            <div class="card"><div class="card-title">AI Sentiment: How AI Tools Talk About Us (Profound, April)</div><div class="metric-sub" style="margin-bottom: 12px;">This reflects how AI views and discusses our brand, which is what prospective customers see when they research us through search and AI tools.</div><div class="stat-row"><div class="stat-item"><div class="stat-label">Positive</div><div class="stat-value positive">66%</div></div><div class="stat-item"><div class="stat-label">Negative</div><div class="stat-value negative">34%</div></div></div><div class="side-by-side"><div class="theme-box theme-box-positive"><div class="theme-box-label" style="color: #99CC00;">TOP POSITIVE THEMES</div><ul><li>Transparent Pricing (324 occurrences)</li><li>Affordable Pricing (106 occurrences)</li><li>Competitive Pricing (90 occurrences)</li></ul></div><div class="theme-box theme-box-negative"><div class="theme-box-label" style="color: #ff6b6b;">TOP NEGATIVE THEMES</div><ul><li>Battery Drain Issues (53 occurrences)</li><li>Poor Customer Service (49 occurrences)</li><li>Long Hold Times (42 occurrences)</li></ul></div></div></div>
+            <div class="card"><div class="card-title">AI Provider Rankings (Copilot, April)</div><table><thead><tr><th>Rank</th><th>Provider</th><th>Known For</th><th>Support Rating</th></tr></thead><tbody><tr><td>1</td><td>Smart Start</td><td>Best Overall Convenience</td><td>&#11088;&#11088;&#11088;&#11088;</td></tr><tr><td class="positive">2</td><td class="positive">LifeSafer</td><td class="positive">Best for Friendly Service</td><td class="positive">&#11088;&#11088;&#11088;&#11088;</td></tr><tr><td>3</td><td>Draeger</td><td>Best for Reliability</td><td>&#11088;&#11088;&#11088;&#11088;</td></tr><tr><td>4</td><td>Intoxalock</td><td>Best for Availability</td><td class="negative">&#11088;&#11088;</td></tr><tr><td>5</td><td>Alcolock</td><td>Best for Basic Needs</td><td>&#11088;&#11088;</td></tr></tbody></table><div class="insight-box">We match Smart Start on support (4 out of 5) while Intoxalock gets a 2. When AI recommends who to pick for friendly, helpful service, it points to us. That's the lane to protect.</div></div>
+        </div>
+
+        <div id="competitive" class="tab-content">
+            <h2 style="font-size: 24px; margin-bottom: 20px; color: #99CC00;">Us vs Smart Start vs Intoxalock</h2>
+            <div class="dashboard-grid">
+                <div class="card"><div class="card-title">Us (TrustPilot 4.6)</div><div class="metric-large">19,443</div><div class="metric-sub">Total TP reviews | 82% five star (28 day) | Google: 4.8</div><div class="metric-sub">BBB: 1.04 | 239 reviews | Not Accredited</div></div>
+                <div class="card"><div class="card-title">Smart Start (TrustPilot 4.7)</div><div class="metric-large">40,536</div><div class="metric-sub">Total TP reviews | Volume leader | Steady social presence</div><div class="metric-sub">BBB: 1.03 | 159 reviews | Accredited</div></div>
+                <div class="card"><div class="card-title">Intoxalock (TrustPilot 4.4)</div><div class="metric-large">72,244</div><div class="metric-sub">Total TP reviews | Cyberattack fallout ongoing | State issues in IL, FL</div><div class="metric-sub">BBB: 1.01 | 270 reviews | Accredited (A) | 943 complaints</div></div>
+            </div>
+            <div class="card"><div class="card-title">Where We Win and Where We Don't</div><table><thead><tr><th>Category</th><th>Our Position</th></tr></thead><tbody><tr><td>TrustPilot Rating</td><td>0.1 behind Smart Start (4.6 vs 4.7), 0.2 ahead of Intoxalock. Closeable gap.</td></tr><tr><td>Review Volume</td><td>Smallest of the three (19K vs 40K vs 72K). Volume doesn't equal quality. Our rating per review is stronger.</td></tr><tr><td>Service Reputation</td><td class="positive">AI ranks us #1 for friendly service. Intoxalock gets 2/5 on support, we get 4/5. This is our lane.</td></tr><tr><td>BBB</td><td>Everyone is below 1.1. Industry wide problem. Needs a different approach than TP.</td></tr><tr><td>Social Conversation</td><td class="positive">We're the organic recommendation. Intoxalock is actively eroding. Smart Start stays quiet and steady.</td></tr><tr><td>State Level Opportunity</td><td class="positive">Intoxalock has state agency issues in IL and FL. We're on approved vendor lists. Window is open across the business.</td></tr></tbody></table></div>
+            <div class="card"><div class="card-title">Intoxalock State Watch</div><table><thead><tr><th>State</th><th>Status</th><th>What We Know</th></tr></thead><tbody><tr><td>Illinois</td><td class="negative">Active</td><td>SOS BAIID division confirming Intoxalock not sending calibration data. Drivers being told to switch. We're on the approved vendor list.</td></tr><tr><td>Florida</td><td class="negative">Certification Lost</td><td>State pulled certification. No installs, calibrations, or reporting. Intoxalock collected money without telling customers.</td></tr></tbody></table></div>
+        </div>
+
+        <div id="trial" class="tab-content">
+            <h2 style="font-size: 24px; margin-bottom: 20px; color: #99CC00;">90 Day Trial: Are We on Track?</h2>
+            <div class="dashboard-grid">
+                <div class="card"><div class="card-title">Month 1: Set It Up <span class="gate-status gate-complete">COMPLETE</span></div><table><thead><tr><th>What We Built</th><th>Status</th></tr></thead><tbody><tr><td>Reputation dashboard with real data from Lane (TP) and Matt (Meltwater/Profound)</td><td class="positive">Live</td></tr><tr><td>Crisis response process with triggers, team structure, and GTM playbooks</td><td class="positive">In review</td></tr><tr><td>Industry Chatter Report as recurring intel product</td><td class="positive">Active</td></tr><tr><td>TrustPilot review labeling and Google Ads impact documented</td><td class="positive">Done</td></tr><tr><td>Reporting cadence finalized with Chris's team</td><td class="positive">Monthly</td></tr><tr><td>NPS first baseline established</td><td class="positive">Done</td></tr><tr><td>NPS to TrustPilot champion pipeline launched and performing</td><td class="positive">Running</td></tr></tbody></table></div>
+                <div class="card"><div class="card-title">Still In Progress</div><table><thead><tr><th>What's In Flight</th><th>Status</th></tr></thead><tbody><tr><td>BBB management approach (needs different handling than TP)</td><td class="neutral">Scoping</td></tr><tr><td>Reddit strategy (monitoring only, no brand engagement)</td><td class="neutral">Monitoring</td></tr></tbody></table></div>
+            </div>
+            <div class="dashboard-grid">
+                <div class="card"><div class="card-title">Month 2: Turn It On <span class="gate-status gate-progress">UPCOMING</span></div><table><thead><tr><th>What We're Watching For</th><th>Status</th></tr></thead><tbody><tr><td>NPS to TrustPilot champion pipeline performing</td><td class="positive">Live and running</td></tr><tr><td>Crisis monitoring catching real issues</td><td class="positive">State level intel captured</td></tr><tr><td>Intel driving actual decisions</td><td class="neutral">Month 2</td></tr><tr><td>Competitive gaps identified and acted on</td><td class="positive">IL/FL opportunity documented</td></tr></tbody></table></div>
+                <div class="card"><div class="card-title">Month 3: Make the Call <span class="gate-status gate-pending">PENDING</span></div><table><thead><tr><th>What Success Looks Like</th><th>Where We Are</th></tr></thead><tbody><tr><td>TrustPilot holding 4.6, trending to 4.7?</td><td class="positive">Holding 43 days, average trending up</td></tr><tr><td>Caught a crisis or capitalized on competitor slip?</td><td class="positive">Intoxalock state failures documented</td></tr><tr><td>Found gaps we couldn't see before?</td><td class="positive">BBB, AI sentiment, service consistency</td></tr><tr><td>Teams actually using this intel?</td><td class="neutral">Check at Month 3</td></tr><tr><td>Decision: Scale to Phase 2 (LRS)?</td><td class="neutral">Week of July 11</td></tr></tbody></table></div>
+            </div>
+            <div class="card"><div class="card-title">Decisions Made</div><div class="decision-log"><div class="decision-log-date">MARCH 31</div><div class="decision-log-text">Alignment meeting with Josh. Approved 90 day trial. Monthly reporting. Multi-platform approach. No new budget. Go/no-go at Month 3.</div></div><div class="decision-log"><div class="decision-log-date">APRIL 7</div><div class="decision-log-text">Dashboard and crisis process reviewed with Carly. Framework approved. BBB flagged as needing different management. Open questions documented on decision authority and customer comms workflow.</div></div><div class="decision-log"><div class="decision-log-date">APRIL 15</div><div class="decision-log-text">Reporting sync with Chris's team. Monthly cadence locked in. Lane provides TP analytics, Matt provides Meltwater/Profound. No duplication. Reddit: monitor only, no brand engagement.</div></div></div>
+            <div class="card"><div class="card-title">What Phase 2 Looks Like (If We Prove Value)</div><div class="insight-box">Build the LifeSafer Reputation Score (LRS): one composite number across all 6 platforms. Leadership gets a single metric to track us vs Smart Start and Intoxalock. Weighted: TrustPilot (35%), Google (25%), NPS (20%), Social (10%), AI (10%).</div></div>
+        </div>
+    </div>
+
+    <script>
+        var lime = '#99CC00';
+        Chart.defaults.color = '#ffffff';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+        new Chart(document.getElementById('trendChart'), { type: 'line', data: { labels: ['Feb W1', 'Feb W2', 'Feb W3', 'Feb W4', 'Mar W1', 'Mar W2', 'Mar W3', 'Mar W4', 'Apr W1', 'Apr W2', 'Apr W3', 'Apr W4'], datasets: [{ label: 'LifeSafer', data: [4.55, 4.55, 4.56, 4.56, 4.57, 4.57, 4.58, 4.58, 4.58, 4.58, 4.58, 4.58], borderColor: lime, backgroundColor: lime, tension: 0.3, borderWidth: 3 }, { label: 'Smart Start', data: [4.7, 4.7, 4.7, 4.7, 4.7, 4.7, 4.7, 4.7, 4.7, 4.7, 4.7, 4.7], borderColor: '#ffffff', backgroundColor: '#ffffff', tension: 0.3, borderWidth: 2, borderDash: [5, 5] }, { label: 'Intoxalock', data: [4.5, 4.5, 4.48, 4.47, 4.45, 4.43, 4.42, 4.4, 4.4, 4.4, 4.4, 4.4], borderColor: '#66cccc', backgroundColor: '#66cccc', tension: 0.3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ffffff', font: { size: 12 } } } }, scales: { y: { min: 4.3, max: 4.8, ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' } }, x: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' } } } } });
+        new Chart(document.getElementById('npsChart'), { type: 'bar', data: { labels: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], datasets: [{ label: 'Responses', data: [30, 6, 8, 5, 4, 8, 6, 8, 8, 10, 36], backgroundColor: ['#ff6b6b','#ff6b6b','#ff6b6b','#ff6b6b','#ff6b6b','#ff6b6b','#ff6b6b','#ffc107','#ffc107','#99CC00','#99CC00'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' } }, x: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' } } } } });
+        function showTab(tabName) { document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); }); document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); }); event.target.classList.add('active'); document.getElementById(tabName).classList.add('active'); }
+    </script>
+</body>
+</html>
